@@ -239,12 +239,6 @@ const CommunityPage = () => {
                   {post.engagement?.comments || 0}
                 </span>
               </Link>
-              <button className="flex items-center space-x-2 text-gray-600 hover:text-green-500 transition-colors">
-                <Share2 className="w-5 h-5" />
-                <span className="text-sm font-medium">
-                  {post.engagement?.shares || 0}
-                </span>
-              </button>
             </div>
           </div>
         </div>

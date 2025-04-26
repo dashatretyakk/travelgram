@@ -1,0 +1,86 @@
+{
+  "stories": [
+    {
+      "id": "offline-story-1",
+      "title": "Beautiful Barcelona Beaches",
+      "description": "Exploring the stunning coastline of Barcelona",
+      "location": "Barcelona, Spain",
+      "images": ["/icons/icon-512x512.png"],
+      "likes": 42,
+      "comments": 7,
+      "tags": ["europe", "beach", "city"]
+    },
+    {
+      "id": "offline-story-2",
+      "title": "Hiking in the Swiss Alps",
+      "description": "An unforgettable trek through breathtaking mountain scenery",
+      "location": "Interlaken, Switzerland",
+      "images": ["/icons/icon-512x512.png"],
+      "likes": 35,
+      "comments": 5,
+      "tags": ["hiking", "mountains", "europe"]
+    },
+    {
+      "id": "offline-story-3",
+      "title": "Tokyo Street Food Adventure",
+      "description": "Sampling the best street food in Tokyo's bustling markets",
+      "location": "Tokyo, Japan",
+      "images": ["/icons/icon-512x512.png"],
+      "likes": 28,
+      "comments": 12,
+      "tags": ["food", "asia", "city"]
+    }
+  ],
+  "routes": [
+    {
+      "id": "offline-route-1",
+      "title": "Italian Coast Road Trip",
+      "description": "A scenic journey along Italy's stunning Amalfi Coast",
+      "mainImage": "/icons/icon-512x512.png",
+      "difficulty": "easy",
+      "duration": "7 days",
+      "distance": "280 km",
+      "likes": 64,
+      "stops": [
+        {
+          "location": "Naples",
+          "description": "Start your journey in this vibrant historic city"
+        },
+        {
+          "location": "Sorrento",
+          "description": "Enjoy stunning views of Mount Vesuvius"
+        },
+        {
+          "location": "Positano",
+          "description": "Visit this picturesque cliffside village"
+        }
+      ],
+      "tags": ["italy", "roadtrip", "coast"]
+    },
+    {
+      "id": "offline-route-2",
+      "title": "Morocco Desert Tour",
+      "description": "From Marrakech to the Sahara Desert and back",
+      "mainImage": "/icons/icon-512x512.png",
+      "difficulty": "medium",
+      "duration": "5 days",
+      "distance": "350 km",
+      "likes": 41,
+      "stops": [
+        {
+          "location": "Marrakech",
+          "description": "Start in the bustling markets of Marrakech"
+        },
+        {
+          "location": "Atlas Mountains",
+          "description": "Cross the stunning mountain range"
+        },
+        {
+          "location": "Sahara Desert",
+          "description": "Camp under the stars in the desert"
+        }
+      ],
+      "tags": ["morocco", "desert", "africa"]
+    }
+  ]
+}

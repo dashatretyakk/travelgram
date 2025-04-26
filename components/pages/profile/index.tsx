@@ -138,14 +138,6 @@ const Profile = () => {
   const quickActions = [
     ...(isOwner
       ? [
-          // {
-          //   label: "Edit Profile",
-          //   icon: Edit,
-          //   color: "bg-blue-50 text-blue-600",
-          //   onClick: () => {
-          //     /* Add edit functionality */
-          //   },
-          // },
           {
             label: "Create Story",
             icon: Plus,
@@ -159,16 +151,7 @@ const Profile = () => {
             onClick: () => setIsCreateRouteModalOpen(true),
           },
         ]
-      : [
-          {
-            label: "Follow",
-            icon: Users,
-            color: "bg-blue-50 text-blue-600",
-            onClick: () => {
-              /* Add follow functionality */
-            },
-          },
-        ]),
+      : []),
   ];
   const sections = [
     { id: "stories", label: "Stories", icon: Grid },
@@ -197,7 +180,7 @@ const Profile = () => {
     ],
   };
 
-  console.log(user);
+  console.log(profileData);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
@@ -207,15 +190,18 @@ const Profile = () => {
           <div className="py-6 flex items-center justify-between">
             <div className="flex items-center space-x-5">
               <div className="relative">
-                <img
-                  src={profileData.photoURL}
-                  alt={profileData.name}
-                  className="w-16 h-16 rounded-full border-2 border-white shadow-md"
-                />
-                {isOwner && (
-                  <button className="absolute bottom-0 right-0 p-1 bg-blue-500 rounded-full text-white hover:bg-blue-600">
-                    <Camera className="w-3 h-3" />
-                  </button>
+                {profileData.photoURL ? (
+                  <img
+                    src={profileData.photoURL}
+                    alt={profileData.name}
+                    className="w-16 h-16 rounded-full border-2 border-white shadow-md"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full border-2 border-white shadow-md bg-gray-200 flex items-center justify-center">
+                    <span className="text-xl font-semibold text-gray-600">
+                      {profileData.name?.[0]?.toUpperCase()}
+                    </span>
+                  </div>
                 )}
               </div>
               <div>

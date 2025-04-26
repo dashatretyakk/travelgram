@@ -216,11 +216,19 @@ const TrendingRoutes = () => {
             {/* Top Section */}
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-2">
-                <img
-                  src={route.userImage}
-                  alt={route.userName}
-                  className="w-10 h-10 rounded-full border-2 border-white"
-                />
+                {route.userImage ? (
+                  <img
+                    src={route.userImage}
+                    alt={route.userName}
+                    className="w-10 h-10 rounded-full border-2 border-white shadow-md"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full border-2 border-white shadow-md bg-gray-200 flex items-center justify-center">
+                    <span className="text-xl font-semibold text-gray-600">
+                      {route.userName?.[0]?.toUpperCase()}
+                    </span>
+                  </div>
+                )}
                 <span className="text-white font-medium">{route.userName}</span>
               </div>
               <div className="flex space-x-2">
@@ -236,7 +244,7 @@ const TrendingRoutes = () => {
                     }`}
                   />
                 </button>
-                <button
+                {/* <button
                   onClick={handleSave}
                   className={`p-2 rounded-full ${
                     isSaved ? "bg-blue-500" : "bg-black/30 hover:bg-black/40"
@@ -247,7 +255,7 @@ const TrendingRoutes = () => {
                       isSaved ? "text-white fill-current" : "text-white"
                     }`}
                   />
-                </button>
+                </button> */}
               </div>
             </div>
 

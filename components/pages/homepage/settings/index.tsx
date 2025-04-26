@@ -4,7 +4,15 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { auth, db } from "@/utils/firebase";
 import { signOut } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import {
   User,
   Globe,
@@ -13,14 +21,43 @@ import {
   Link as LinkIcon,
   Save,
   Edit2,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContextProvider";
+
+// Function to check if username is already taken (by another user)
+const isUsernameTaken = async (username, currentUserId) => {
+  try {
+    // Query Firestore for any user with this username
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("username", "==", username));
+    const querySnapshot = await getDocs(q);
+
+    // If no documents found, username is available
+    if (querySnapshot.empty) return false;
+
+    // If there's a document but it belongs to the current user, it's not "taken"
+    if (querySnapshot.size === 1) {
+      const doc = querySnapshot.docs[0];
+      return doc.id !== currentUserId;
+    }
+
+    // If we found any other documents, the username is taken
+    return true;
+  } catch (error) {
+    console.error("Error checking username:", error);
+    // In case of error, assume the username might be taken to be safe
+    return true;
+  }
+};
 
 const SettingsPage = () => {
   const router = useRouter();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [usernameError, setUsernameError] = useState("");
+  const [originalUsername, setOriginalUsername] = useState("");
   const [userData, setUserData] = useState({
     name: "",
     username: "",
@@ -39,10 +76,12 @@ const SettingsPage = () => {
 
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
+          const data = userDoc.data();
           setUserData({
-            ...userDoc.data(),
+            ...data,
             email: user.email,
           });
+          setOriginalUsername(data.username);
         }
         setLoading(false);
       } catch (error) {
@@ -62,11 +101,59 @@ const SettingsPage = () => {
     }
   };
 
+  const handleUsernameChange = (e) => {
+    // Clear any previous username errors
+    setUsernameError("");
+    setUserData({ ...userData, username: e.target.value });
+  };
+
+  const validateUsername = async () => {
+    // Clear any previous errors
+    setUsernameError("");
+
+    // Validate username format
+    if (!userData.username) {
+      setUsernameError("Username is required");
+      return false;
+    }
+
+    if (!userData.username.startsWith("@")) {
+      setUsernameError("Username must start with @");
+      return false;
+    }
+
+    if (userData.username.length < 3) {
+      setUsernameError("Username is too short");
+      return false;
+    }
+
+    // Check if username has changed
+    if (userData.username === originalUsername) {
+      return true; // No change, no need to check
+    }
+
+    // Check if new username is taken
+    const taken = await isUsernameTaken(userData.username, user.uid);
+    if (taken) {
+      setUsernameError("This username is already taken");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSave = async () => {
     try {
       setSaveLoading(true);
       const user = auth.currentUser;
       if (!user) return;
+
+      // Validate username before saving
+      const isUsernameValid = await validateUsername();
+      if (!isUsernameValid) {
+        setSaveLoading(false);
+        return;
+      }
 
       await updateDoc(doc(db, "users", user.uid), {
         name: userData.name,
@@ -77,6 +164,8 @@ const SettingsPage = () => {
         updatedAt: new Date(),
       });
 
+      // Update the original username with the new one
+      setOriginalUsername(userData.username);
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -158,13 +247,22 @@ const SettingsPage = () => {
               <input
                 type="text"
                 value={userData.username}
-                onChange={(e) =>
-                  setUserData({ ...userData, username: e.target.value })
-                }
+                onChange={handleUsernameChange}
                 disabled={!isEditing}
-                className="w-full px-4 py-2 border rounded-lg disabled:bg-gray-50"
+                className={`w-full px-4 py-2 border rounded-lg disabled:bg-gray-50 ${
+                  usernameError ? "border-red-500" : ""
+                }`}
                 placeholder="@username"
               />
+              {usernameError && (
+                <div className="mt-2 flex items-center text-red-600 text-sm">
+                  <AlertCircle className="w-4 h-4 mr-1" />
+                  {usernameError}
+                </div>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                Your username must be unique and start with @
+              </p>
             </div>
 
             {/* Bio */}

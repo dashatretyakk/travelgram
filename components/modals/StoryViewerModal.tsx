@@ -22,10 +22,16 @@ import {
   serverTimestamp,
   updateDoc,
   doc,
+  getDocs,
+  increment,
+  getDoc,
+  setDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { db } from "@/utils/firebase";
+import { createNotification } from "@/utils/notifications";
 
-const StoryViewerModal = ({ isOpen, onClose, story }) => {
+const StoryViewerModal = ({ isOpen, onClose, story, onLikeUpdate }) => {
   const { user } = useAuth();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
@@ -33,6 +39,25 @@ const StoryViewerModal = ({ isOpen, onClose, story }) => {
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+
+  // Check if user has liked this story when story is loaded
+  useEffect(() => {
+    if (!story?.id || !user) return;
+
+    const checkLikeStatus = async () => {
+      try {
+        const likeRef = doc(db, "likes", `story_${story.id}_${user.uid}`);
+        const likeDoc = await getDoc(likeRef);
+        setIsLiked(likeDoc.exists());
+        setLikeCount(story.likes || 0);
+      } catch (error) {
+        console.error("Error checking like status:", error);
+      }
+    };
+
+    checkLikeStatus();
+  }, [story?.id, user]);
 
   // Fetch comments when story is opened
   useEffect(() => {
@@ -55,6 +80,69 @@ const StoryViewerModal = ({ isOpen, onClose, story }) => {
 
     return () => unsubscribe();
   }, [story?.id, showComments]);
+
+  const handleLike = async () => {
+    if (!user) {
+      // You might want to show a login prompt here
+      alert("Please log in to like stories");
+      return;
+    }
+
+    try {
+      const likeRef = doc(db, "likes", `story_${story.id}_${user.uid}`);
+      const storyRef = doc(db, "stories", story.id);
+
+      if (!isLiked) {
+        // Add like
+        await setDoc(likeRef, {
+          userId: user.uid,
+          storyId: story.id,
+          createdAt: new Date(),
+        });
+
+        // Increment story likes count
+        await updateDoc(storyRef, {
+          likes: increment(1),
+        });
+
+        const newLikeCount = likeCount + 1;
+        setLikeCount(newLikeCount);
+
+        // Notify parent component about the like update
+        if (onLikeUpdate) {
+          onLikeUpdate(story.id, newLikeCount);
+        }
+
+        // Create notification for the story owner
+        createNotification({
+          type: "like",
+          contentType: "story",
+          contentId: story.id,
+          senderId: user.uid,
+        });
+      } else {
+        // Remove like
+        await deleteDoc(likeRef);
+
+        // Decrement story likes count
+        await updateDoc(storyRef, {
+          likes: increment(-1),
+        });
+
+        const newLikeCount = Math.max(likeCount - 1, 0);
+        setLikeCount(newLikeCount);
+
+        // Notify parent component about the like update
+        if (onLikeUpdate) {
+          onLikeUpdate(story.id, newLikeCount);
+        }
+      }
+
+      setIsLiked(!isLiked);
+    } catch (error) {
+      console.error("Error toggling like:", error);
+    }
+  };
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return "";
@@ -103,6 +191,14 @@ const StoryViewerModal = ({ isOpen, onClose, story }) => {
       const storyRef = doc(db, "stories", story.id);
       await updateDoc(storyRef, {
         comments: (story.comments || 0) + 1,
+      });
+
+      // Create notification for the story owner
+      createNotification({
+        type: "comment",
+        contentType: "story",
+        contentId: story.id,
+        senderId: user.uid,
       });
 
       setNewComment("");
@@ -230,7 +326,7 @@ const StoryViewerModal = ({ isOpen, onClose, story }) => {
               {/* Interaction buttons */}
               <div className="flex items-center space-x-4 mb-4">
                 <button
-                  onClick={() => setIsLiked(!isLiked)}
+                  onClick={handleLike}
                   className={`p-2 rounded-full ${
                     isLiked ? "text-red-500" : "text-gray-600"
                   }`}
@@ -239,6 +335,7 @@ const StoryViewerModal = ({ isOpen, onClose, story }) => {
                     className={`w-6 h-6 ${isLiked ? "fill-current" : ""}`}
                   />
                 </button>
+                <span className="text-sm text-gray-600">{likeCount}</span>
                 <button
                   onClick={() => setShowComments(!showComments)}
                   className="p-2 rounded-full text-gray-600"

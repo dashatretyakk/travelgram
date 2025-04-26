@@ -17,9 +17,11 @@ import {
   where,
   getDocs,
   increment,
+  serverTimestamp,
 } from "firebase/firestore";
 import { useAuth } from "@/context/AuthContextProvider";
 import { MessageCircle, Heart, Share2, MapPin, Send } from "lucide-react";
+import { createNotification } from "@/utils/notifications";
 
 const PostContentPage = () => {
   const params = useParams();
@@ -29,6 +31,7 @@ const PostContentPage = () => {
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
+  const [showShareTooltip, setShowShareTooltip] = useState(false);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -118,6 +121,14 @@ const PostContentPage = () => {
             likes: (prev.engagement?.likes || 0) + 1,
           },
         }));
+
+        // Create notification for post owner
+        createNotification({
+          type: "like",
+          contentType: "post",
+          contentId: params.postId,
+          senderId: user.uid,
+        });
       } else {
         // Remove like
         const likeDoc = likeSnapshot.docs[0];
@@ -143,31 +154,100 @@ const PostContentPage = () => {
     }
   };
 
-  const handleAddComment = async (e) => {
-    e.preventDefault();
-    if (!user) return;
-    if (!newComment.trim()) return;
-
+  // Handle share button click
+  const handleShare = async () => {
     try {
-      const commentRef = collection(db, "posts", params.postId, "comments");
-      const postRef = doc(db, "posts", params.postId);
+      // Get the current URL
+      const url = window.location.href;
 
-      await addDoc(commentRef, {
-        content: newComment,
-        userId: user.uid,
-        userName: user.name,
-        userImage: user.photoURL,
-        createdAt: new Date(),
+      // Copy to clipboard
+      await navigator.clipboard.writeText(url);
+
+      // Show tooltip
+      setShowShareTooltip(true);
+
+      // Increment share count in Firestore
+      const postRef = doc(db, "posts", params.postId);
+      await updateDoc(postRef, {
+        "engagement.shares": increment(1),
       });
 
-      // Update post comments count
-      await updateDoc(postRef, {
+      // Update local post state
+      setPost((prev) => ({
+        ...prev,
+        engagement: {
+          ...prev.engagement,
+          shares: (prev.engagement?.shares || 0) + 1,
+        },
+      }));
+
+      // Hide tooltip after 3 seconds
+      setTimeout(() => {
+        setShowShareTooltip(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Error sharing post:", error);
+    }
+  };
+
+  // Handle comment submission
+  const handleAddComment = async (e) => {
+    e.preventDefault();
+    if (!user || !newComment.trim()) return;
+
+    try {
+      // Create comment object
+      const comment = {
+        userId: user.uid,
+        userName: user.name,
+        userPhoto: user.photoURL,
+        text: newComment.trim(),
+        createdAt: serverTimestamp(),
+      };
+
+      // Add to Firestore
+      await addDoc(collection(db, "posts", params.postId, "comments"), comment);
+
+      // Update comment count in post
+      await updateDoc(doc(db, "posts", params.postId), {
         "engagement.comments": increment(1),
       });
 
       setNewComment("");
+
+      // Create notification for post owner
+      createNotification({
+        type: "comment",
+        contentType: "post",
+        contentId: params.postId,
+        senderId: user.uid,
+      });
     } catch (error) {
       console.error("Error adding comment:", error);
+    }
+  };
+
+  // Format timestamp
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp || !timestamp.toDate) return "";
+
+    const now = new Date();
+    const date = timestamp.toDate();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInDays > 7) {
+      return date.toLocaleDateString();
+    } else if (diffInDays > 0) {
+      return `${diffInDays}d ago`;
+    } else if (diffInHours > 0) {
+      return `${diffInHours}h ago`;
+    } else if (diffInMinutes > 0) {
+      return `${diffInMinutes}m ago`;
+    } else {
+      return "Just now";
     }
   };
 
@@ -270,10 +350,21 @@ const PostContentPage = () => {
                 <MessageCircle className="w-5 h-5" />
                 <span>{comments.length}</span>
               </div>
-              <button className="flex items-center space-x-2 text-gray-600 hover:text-green-500">
-                <Share2 className="w-5 h-5" />
-                <span>{post.engagement?.shares || 0}</span>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={handleShare}
+                  className="flex items-center space-x-2 text-gray-600 hover:text-green-500"
+                >
+                  <Share2 className="w-5 h-5" />
+                  <span>{post.engagement?.shares || 0}</span>
+                </button>
+                {showShareTooltip && (
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-800 text-white text-xs rounded whitespace-nowrap">
+                    Link copied to clipboard!
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800"></div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -331,9 +422,7 @@ const PostContentPage = () => {
                         <p className="text-gray-700">{comment.content}</p>
                       </div>
                       <div className="text-xs text-gray-500 mt-1">
-                        {new Date(
-                          comment.createdAt?.toDate()
-                        ).toLocaleDateString()}
+                        {formatTimestamp(comment.createdAt)}
                       </div>
                     </div>
                   </div>

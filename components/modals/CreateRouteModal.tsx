@@ -99,6 +99,16 @@ const CreateRouteModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const handleNextStep = (e) => {
+    e.preventDefault();
+    setCurrentStep(currentStep + 1);
+  };
+
+  const handleBackStep = (e) => {
+    e.preventDefault();
+    setCurrentStep(currentStep - 1);
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -483,7 +493,7 @@ const CreateRouteModal = ({ isOpen, onClose }) => {
               {currentStep > 1 && (
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(currentStep - 1)}
+                  onClick={handleBackStep}
                   className="px-6 py-2 text-gray-600 hover:text-gray-800"
                 >
                   Back
@@ -493,7 +503,7 @@ const CreateRouteModal = ({ isOpen, onClose }) => {
                 {currentStep < 3 ? (
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(currentStep + 1)}
+                    onClick={handleNextStep}
                     className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                   >
                     Next

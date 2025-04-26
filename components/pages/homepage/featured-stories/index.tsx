@@ -37,6 +37,15 @@ const FeaturedStories = () => {
     }
   };
 
+  // Function to handle story like updates from the modal
+  const handleLikeUpdate = (storyId, newLikeCount) => {
+    setStories((currentStories) =>
+      currentStories.map((story) =>
+        story.id === storyId ? { ...story, likes: newLikeCount } : story
+      )
+    );
+  };
+
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return "";
     const now = new Date();
@@ -86,6 +95,7 @@ const FeaturedStories = () => {
             alt={story.title}
             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
           />
+
           {story.images.length > 1 && (
             <div className="absolute top-4 right-4 bg-black/50 text-white px-2 py-1 rounded-full text-xs">
               +{story.images.length - 1}
@@ -97,11 +107,19 @@ const FeaturedStories = () => {
         <div className="p-4">
           {/* Author Info */}
           <div className="flex items-center space-x-3 mb-3">
-            <img
-              src={story.userImage}
-              alt={story.userName}
-              className="w-8 h-8 rounded-full border-2 border-white ring-2 ring-gray-100"
-            />
+            {story.userImage ? (
+              <img
+                src={story.userImage}
+                alt={story.userName}
+                className="w-10 h-10 rounded-full border-2 border-white shadow-md"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full border-2 border-white shadow-md bg-gray-200 flex items-center justify-center">
+                <span className="text-xl font-semibold text-gray-600">
+                  {story.userName?.[0]?.toUpperCase()}
+                </span>
+              </div>
+            )}
             <div>
               <h4 className="font-medium text-sm">{story.userName}</h4>
               {story.location && (
@@ -143,9 +161,6 @@ const FeaturedStories = () => {
               <div className="flex items-center space-x-1 text-gray-600">
                 <MessageCircle className="w-5 h-5" />
                 <span className="text-sm">{story.comments || 0}</span>
-              </div>
-              <div className="flex items-center space-x-1 text-gray-600">
-                <Share2 className="w-5 h-5" />
               </div>
             </div>
             <span className="text-xs text-gray-500">
@@ -192,11 +207,11 @@ const FeaturedStories = () => {
         )}
 
         {/* Load More Button */}
-        <div className="text-center pt-8">
+        {/* <div className="text-center pt-8">
           <button className="px-6 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors">
             Load More Stories
           </button>
-        </div>
+        </div> */}
       </div>
 
       {/* Story Viewer Modal */}
@@ -207,6 +222,7 @@ const FeaturedStories = () => {
           setSelectedStory(null);
         }}
         story={selectedStory}
+        onLikeUpdate={handleLikeUpdate}
       />
     </>
   );

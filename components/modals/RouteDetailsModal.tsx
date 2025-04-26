@@ -37,6 +37,7 @@ import {
   Send,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createNotification } from "@/utils/notifications";
 
 const RouteDetailsModal = ({ isOpen, onClose, route }) => {
   const { user } = useAuth();
@@ -70,7 +71,7 @@ const RouteDetailsModal = ({ isOpen, onClose, route }) => {
     // Check if user has liked this route
     if (user) {
       const checkLikeStatus = async () => {
-        const likeRef = doc(db, "likes", `${route.id}_${user.uid}`);
+        const likeRef = doc(db, "likes", `route_${route.id}_${user.uid}`);
         const likeDoc = await getDoc(likeRef);
         setIsLiked(likeDoc.exists());
       };
@@ -82,44 +83,62 @@ const RouteDetailsModal = ({ isOpen, onClose, route }) => {
 
   const handleLike = async () => {
     if (!user) {
-      alert("Please log in to like routes");
+      alert("Please sign in to like routes");
       return;
     }
 
     try {
-      const likeRef = doc(db, "likes", `${route.id}_${user.uid}`);
+      const likeRef = doc(db, "likes", `route_${route.id}_${user.uid}`);
       const routeRef = doc(db, "routes", route.id);
 
       if (!isLiked) {
+        // Add like
         await setDoc(likeRef, {
           userId: user.uid,
           routeId: route.id,
-          createdAt: serverTimestamp(),
+          createdAt: new Date(),
         });
-        await updateDoc(routeRef, { likes: increment(1) });
-        setLikeCount((prev) => prev + 1);
-      } else {
-        await deleteDoc(likeRef);
-        await updateDoc(routeRef, { likes: increment(-1) });
-        setLikeCount((prev) => prev - 1);
-      }
 
-      setIsLiked(!isLiked);
+        // Increment route likes count
+        await updateDoc(routeRef, {
+          likes: increment(1),
+        });
+
+        setLikeCount((prev) => prev + 1);
+        setIsLiked(true);
+
+        // Create notification for route owner
+        createNotification({
+          type: "like",
+          contentType: "route",
+          contentId: route.id,
+          senderId: user.uid,
+        });
+      } else {
+        // Remove like
+        await deleteDoc(likeRef);
+
+        // Decrement route likes count
+        await updateDoc(routeRef, {
+          likes: increment(-1),
+        });
+
+        setLikeCount((prev) => Math.max(prev - 1, 0));
+        setIsLiked(false);
+      }
     } catch (error) {
-      console.error("Error updating like:", error);
+      console.error("Error toggling like:", error);
     }
   };
 
   const handleAddComment = async (e) => {
     e.preventDefault();
-    if (!user) {
-      alert("Please log in to comment");
-      return;
-    }
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || !user || loading) return;
 
     try {
       setLoading(true);
+
+      // Create the comment
       const commentData = {
         routeId: route.id,
         userId: user.uid,
@@ -129,12 +148,21 @@ const RouteDetailsModal = ({ isOpen, onClose, route }) => {
         createdAt: serverTimestamp(),
       };
 
+      // Add comment to Firestore
       await addDoc(collection(db, "comments"), commentData);
 
-      // Update route's comment count
+      // Update comment count in the route document
       const routeRef = doc(db, "routes", route.id);
       await updateDoc(routeRef, {
-        comments: increment(1),
+        comments: (route.comments || 0) + 1,
+      });
+
+      // Create notification for route owner
+      createNotification({
+        type: "comment",
+        contentType: "route",
+        contentId: route.id,
+        senderId: user.uid,
       });
 
       setNewComment("");
@@ -145,17 +173,28 @@ const RouteDetailsModal = ({ isOpen, onClose, route }) => {
     }
   };
 
+  // Format timestamp
   const formatTimestamp = (timestamp) => {
-    if (!timestamp) return "";
+    if (!timestamp || !timestamp.toDate) return "";
 
-    const date = timestamp.toDate();
     const now = new Date();
-    const diffInMinutes = Math.floor((now - date) / (1000 * 60));
+    const date = timestamp.toDate();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
 
-    if (diffInMinutes < 1) return "Just now";
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
-    return date.toLocaleDateString();
+    if (diffInDays > 7) {
+      return date.toLocaleDateString();
+    } else if (diffInDays > 0) {
+      return `${diffInDays}d ago`;
+    } else if (diffInHours > 0) {
+      return `${diffInHours}h ago`;
+    } else if (diffInMinutes > 0) {
+      return `${diffInMinutes}m ago`;
+    } else {
+      return "Just now";
+    }
   };
 
   if (!isOpen || !route) return null;
@@ -516,10 +555,6 @@ const RouteDetailsModal = ({ isOpen, onClose, route }) => {
                 >
                   <MessageCircle className="w-5 h-5" />
                   <span>Comment</span>
-                </button>
-                <button className="w-full py-3 px-4 bg-white text-gray-700 rounded-lg flex items-center justify-center space-x-2 hover:bg-gray-100">
-                  <Share2 className="w-5 h-5" />
-                  <span>Share Route</span>
                 </button>
               </div>
             </div>

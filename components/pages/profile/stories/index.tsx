@@ -45,6 +45,15 @@ const Stories = ({ userId }) => {
     }
   }, [userId]);
 
+  // Handle like updates from the modal
+  const handleLikeUpdate = (storyId, newLikeCount) => {
+    setStories((currentStories) =>
+      currentStories.map((story) =>
+        story.id === storyId ? { ...story, likes: newLikeCount } : story
+      )
+    );
+  };
+
   const getRelativeTime = (date) => {
     if (!date) return "";
 
@@ -177,6 +186,7 @@ const Stories = ({ userId }) => {
           setSelectedStory(null);
         }}
         story={selectedStory}
+        onLikeUpdate={handleLikeUpdate}
       />
     </>
   );
